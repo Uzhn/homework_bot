@@ -67,7 +67,9 @@ def get_api_answer(timestamp):
             logger.error(message)
             raise Exception(message)
         return response.json()
-    except(json.decoder.JSONDecodeError, requests.exceptions.RequestException, Exception) as error:
+    except (
+        json.decoder.JSONDecodeError, requests.exceptions.RequestException
+    ) as error:
         message = f'Ошибка обращения к API: {error}'
         logger.error(message)
         raise Exception(message)
@@ -92,11 +94,13 @@ def parse_status(homework):
     """Функция извлекает статус домашки."""
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
-    
+
     if homework_name is not None and homework_status is not None:
         if homework_status in HOMEWORK_VERDICTS:
             verdict = HOMEWORK_VERDICTS.get(homework_status)
-            return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+            return (f'Изменился статус проверки работы "{homework_name}".'
+                    f' {verdict}'
+                    )
         else:
             logger.error('Неизвестный статус')
             raise SystemError('Неизвестный статус')
