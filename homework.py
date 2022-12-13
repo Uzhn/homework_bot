@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import sys
@@ -8,6 +7,7 @@ from http import HTTPStatus
 import requests
 import telegram
 from dotenv import load_dotenv
+from exceptions import YandexApiError
 
 load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
@@ -41,9 +41,7 @@ def check_tokens():
     """Функция проверяет доступность переменных окружения."""
     env_var = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
     if all(env_var):
-        return True
-    else:
-        return False
+        return all(env_var)
 
 
 def send_message(bot, message):
@@ -67,12 +65,10 @@ def get_api_answer(timestamp):
             logger.error(message)
             raise Exception(message)
         return response.json()
-    except (
-        json.decoder.JSONDecodeError, requests.exceptions.RequestException
-    ) as error:
+    except Exception as error:
         message = f'Ошибка обращения к API: {error}'
         logger.error(message)
-        raise Exception(message)
+        raise YandexApiError(message)
 
 
 def check_response(response):
@@ -87,6 +83,10 @@ def check_response(response):
     if not isinstance(homework, list):
         logger.error('Ошибка типа данных list')
         raise TypeError('Ошибка типа данных list')
+    if not homework:
+        logger.error('Cписок пуст')
+    if not type(dict) in homework[0]:
+        logger.error('В список не передан словарь')
     return homework
 
 
@@ -110,11 +110,11 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
     if not check_tokens():
         logger.critical('Отсутствует обязательная переменная окружения')
         raise Exception('Отсутствует обязательная переменная окружения')
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    timestamp = int(time.time())
 
     while True:
         try:
@@ -123,11 +123,18 @@ def main():
             homework = homework_list[0]
             message = parse_status(homework)
             send_message(bot, message)
-            time.sleep(RETRY_PERIOD)
+            last_message = message
+            if message == last_message:
+                return None
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)
+            send_message(bot, message)
+            last_message = message
+            if message == last_message:
+                return None
+        finally:
             time.sleep(RETRY_PERIOD)
 
 
