@@ -7,7 +7,7 @@ from http import HTTPStatus
 import requests
 import telegram
 from dotenv import load_dotenv
-from exceptions import YandexApiError
+from exceptions import YandexApiError, CheckResponse
 
 load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
@@ -40,8 +40,7 @@ handler.setFormatter(formatter)
 def check_tokens():
     """Функция проверяет доступность переменных окружения."""
     env_var = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
-    if all(env_var):
-        return all(env_var)
+    return all(env_var)
 
 
 def send_message(bot, message):
@@ -67,7 +66,7 @@ def get_api_answer(timestamp):
         return response.json()
     except Exception as error:
         message = f'Ошибка обращения к API: {error}'
-        logger.error(message)
+        logger.error(message, exc_info=True)
         raise YandexApiError(message)
 
 
@@ -84,9 +83,9 @@ def check_response(response):
         logger.error('Ошибка типа данных list')
         raise TypeError('Ошибка типа данных list')
     if not homework:
-        logger.error('Cписок пуст')
-    if not type(dict) in homework[0]:
-        logger.error('В список не передан словарь')
+        message = 'Список домашек пуст'
+        logger.error(message)
+        raise CheckResponse(message)
     return homework
 
 
@@ -115,6 +114,7 @@ def main():
         raise Exception('Отсутствует обязательная переменная окружения')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
+    last_message = ''
 
     while True:
         try:
@@ -122,18 +122,17 @@ def main():
             homework_list = check_response(response)
             homework = homework_list[0]
             message = parse_status(homework)
-            send_message(bot, message)
-            last_message = message
-            if message == last_message:
-                return None
+            if last_message != message:
+                send_message(bot, message)
+                last_message = message
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)
-            send_message(bot, message)
-            last_message = message
-            if message == last_message:
-                return None
+            if last_message != message:
+                send_message(bot, message)
+                last_message = message
+
         finally:
             time.sleep(RETRY_PERIOD)
 
