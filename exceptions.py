@@ -5,7 +5,7 @@ class YandexApiError(Exception):
     pass
 
 
-class CheckResponse(Exception):
+class CheckResponseError(Exception):
     """Ошибка проверки ответа."""
 
     pass

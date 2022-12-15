@@ -7,7 +7,7 @@ from http import HTTPStatus
 import requests
 import telegram
 from dotenv import load_dotenv
-from exceptions import YandexApiError, CheckResponse
+from exceptions import YandexApiError, CheckResponseError
 
 load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
@@ -85,7 +85,7 @@ def check_response(response):
     if not homework:
         message = 'Список домашек пуст'
         logger.error(message)
-        raise CheckResponse(message)
+        raise CheckResponseError(message)
     return homework
 
 
